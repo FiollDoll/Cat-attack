@@ -10,6 +10,10 @@ namespace mainClasses
         public float hp;
         public float speed;
         public float stamina;
+        public float modifyAttack;
+
+        public float fireRate;
+        public float bulletLifeTime;
     }
 }
 
