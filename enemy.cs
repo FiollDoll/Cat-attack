@@ -5,12 +5,15 @@ using mainClasses;
 
 public class enemy : MonoBehaviour
 {
+    [Header("Main")]
+    [SerializeField] private Transform player;
+    [SerializeField] private room totalRoom;
+
     [Header("Stats")]
     public Stats stats;
-
+    [SerializeField] private float runHp;
 
     [Header("Other")]
-    [SerializeField] private Transform player;
     [SerializeField] private GameObject bulletPrefab;
     private enum weaponType { gun, melee };
     [SerializeField] private weaponType weapon;
@@ -18,19 +21,20 @@ public class enemy : MonoBehaviour
     private bool runFromPlayer;
     private float KD_bullet;
 
-    public void EditHp(int hpEdit)
+    public void EditHp(float hpEdit)
     {
         stats.hp += hpEdit;
         if (stats.hp <= 0)
         {
+            totalRoom.DeleteOneEnemy();
             Destroy(gameObject);
             return;
         }
         else
         {
-            if (stats.hp <= 5)
+            if (stats.hp <= runHp)
                 runFromPlayer = true;
-            else if (stats.hp > 5)
+            else if (stats.hp > runHp)
                 runFromPlayer = false;
         }
     }
@@ -74,7 +78,10 @@ public class enemy : MonoBehaviour
                     for (int i = 0; i < enemiesToDamage.Length; i++)
                     {
                         if (enemiesToDamage[i].gameObject.name == "player")
+                        {
                             enemiesToDamage[i].gameObject.GetComponent<player>().HpEdit(-1);
+                            GetComponent<Animator>().Play("attackRat");
+                        }
                     }
                     KD_bullet = stats.fireRate;
                 }

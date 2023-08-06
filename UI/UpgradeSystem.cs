@@ -31,8 +31,6 @@ public class UpgradeSystem : MonoBehaviour
             scriptPlayer.superStats.intelligence += cards[card].effectForce;
         else if (cards[card].effect == "endurance")
             scriptPlayer.superStats.endurance += cards[card].effectForce;
-        else if (cards[card].effect == "luck")
-            scriptPlayer.superStats.luck += cards[card].effectForce;
         ManagePanelUpgrade();
         scriptPlayer.UpdateStats();
     }

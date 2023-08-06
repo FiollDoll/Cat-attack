@@ -13,6 +13,7 @@ namespace mainClasses
         public float modifyAttack;
 
         public float fireRate;
+        public float attackRate;
         public float bulletLifeTime;
     }
 }
