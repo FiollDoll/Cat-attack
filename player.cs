@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 using mainClasses;
+using UnityEngine.SceneManagement;
 
 public class player : MonoBehaviour
 {
@@ -15,8 +16,8 @@ public class player : MonoBehaviour
     [Header("Weapon")]
     [SerializeField] private Transform[] bulletDirections = new Transform[0];
     [SerializeField] private GameObject bulletPrefab;
-    private enum weaponType { gun, melee };
-    [SerializeField] private weaponType weaponPlayer;
+    public enum weaponType { none, gun, melee };
+    public weaponType weaponPlayer;
     private float KD_bullet;
 
     [Header("StatsMenu")]
@@ -24,6 +25,8 @@ public class player : MonoBehaviour
     [SerializeField] private Text textMainStats, textSuperStats;
 
     [Header("Other")]
+    [SerializeField] private Slider staminaSlider;
+    [SerializeField] private UpgradeSystem US;
     [SerializeField] private Text hpText;
     [SerializeField] private GameObject deadMenu;
     [SerializeField] private roomManager rooms;
@@ -32,6 +35,20 @@ public class player : MonoBehaviour
 
     private void Start()
     {
+        superStats.force = PlayerPrefs.GetFloat("force");
+        superStats.agility = PlayerPrefs.GetFloat("agility");
+        superStats.intelligence = PlayerPrefs.GetFloat("intelligence");
+        superStats.endurance = PlayerPrefs.GetFloat("endurance");
+
+        if (PlayerPrefs.GetInt("weaponIsGun") == 1)
+        {
+            weaponPlayer = weaponType.gun;
+            GetComponent<Animator>().SetBool("gun", true);
+        }
+            
+        else
+            weaponPlayer = weaponType.melee;
+
         UpdateStats();
         HpEdit(0);
     }
@@ -40,18 +57,34 @@ public class player : MonoBehaviour
     {
         if (other.gameObject.tag == "nextRoom")
             rooms.NextRoom(int.Parse(other.gameObject.name), gameObject);
+        else if (other.gameObject.tag == "chest")
+        {
+            if (SceneManager.GetActiveScene().name == "test_level")
+                PlayerPrefs.SetInt("lvl1Get", 1);
+            else if (SceneManager.GetActiveScene().name == "two_level")
+                PlayerPrefs.SetInt("lvl2Get", 1);
+            else if (SceneManager.GetActiveScene().name == "three_level")
+                PlayerPrefs.SetInt("lvl3Get", 1);
+
+            US.ManagePanelUpgrade(true);
+        }
+
     }
+
+    public void OpenMenu() => SceneManager.LoadScene("menu");
 
     public void UpdateStats()
     {
         stats.hp = superStats.endurance * 5;
         stats.stamina = superStats.endurance * 100;
+        staminaSlider.maxValue = superStats.endurance * 100;
         stats.speed = 2 * superStats.agility;
         stats.modifyAttack = superStats.force;
 
         stats.fireRate = 1 / superStats.intelligence;
         stats.attackRate = 0.5f / superStats.agility;
         stats.bulletLifeTime = 1 * superStats.intelligence;
+        HpEdit(0);
     }
 
     public void ViewStats()
@@ -60,14 +93,17 @@ public class player : MonoBehaviour
         statsMenu.gameObject.SetActive(!statsMenu.activeSelf);
         if (statsMenu.activeSelf)
         {
-            textMainStats.text = $"Макс. здоровье: {stats.hp} (ВЫНОСЛИВОСТЬ)\nМакс. стамина: {stats.stamina} (ВЫНОСЛИВОСТЬ)\nСкорость: {stats.speed} (ЛОВКОСТЬ)\nСкорость атаки: {stats.attackRate} (ЛОВКОСТЬ)\nБонус атаки: {stats.modifyAttack} (СИЛА)\nСкорость стрельбы: {stats.fireRate} (ИНТЕЛЛЕКТ)\nСрок жизни пули: {stats.bulletLifeTime} (ИНТЕЛЛЕКТ)";
-            textSuperStats.text = $"Сила: {superStats.force}\nЛовкость: {superStats.agility}\nИнтеллект: {superStats.intelligence}\nВыносливость: {superStats.endurance}";
+            textMainStats.text = $"Макс. здоровье: <color=red>{stats.hp}</color>hp (ВЫНОСЛИВОСТЬ)\nМакс. стамина: <color=red>{stats.stamina}</color> (ВЫНОСЛИВОСТЬ)\nСкорость: <color=red>{stats.speed}</color> (ЛОВКОСТЬ)\nЗадержка атаки: <color=red>{stats.attackRate}</color>c (ЛОВКОСТЬ)\nПлюс к атаке: <color=red>{stats.modifyAttack}</color> (СИЛА)\nЗадержка стрельбы: <color=red>{stats.fireRate}</color>с (ИНТЕЛЛЕКТ)\nСрок жизни пули: <color=red>{stats.bulletLifeTime}</color>с (ИНТЕЛЛЕКТ)";
+            textSuperStats.text = $"Сила: <color=red>{superStats.force}</color>\nЛовкость: <color=red>{superStats.agility}</color>\nИнтеллект: <color=red>{superStats.intelligence}</color>\nВыносливость: <color=red>{superStats.endurance}</color>";
         }
     }
 
     private void RunManage(float speedSet, bool runSet)
     {
-        stats.speed = stats.speed + speedSet;
+        if (speedSet > 0)
+            stats.speed = 2 * superStats.agility;
+        else
+            stats.speed = stats.speed + speedSet;
         run = runSet;
     }
 
@@ -110,28 +146,30 @@ public class player : MonoBehaviour
             Collider2D[] enemiesToDamage = null;
             if (side == "left")
             {
-                enemiesToDamage = Physics2D.OverlapCircleAll(bulletDirections[2].position, 0.65f);
+                enemiesToDamage = Physics2D.OverlapCircleAll(bulletDirections[2].position, 2f);
                 transform.localScale = new Vector3(-1, 1, 1);
                 SetAnimationMove("attackRight");
             }
             else if (side == "right")
             {
-                enemiesToDamage = Physics2D.OverlapCircleAll(bulletDirections[3].position, 0.65f);
+                enemiesToDamage = Physics2D.OverlapCircleAll(bulletDirections[3].position, 2f);
                 transform.localScale = new Vector3(1, 1, 1);
                 SetAnimationMove("attackRight");
             }
             else if (side == "up")
             {
-                enemiesToDamage = Physics2D.OverlapCircleAll(bulletDirections[0].position, 0.65f);
-                SetAnimationMove("attack");
+                enemiesToDamage = Physics2D.OverlapCircleAll(bulletDirections[0].position, 2f);
+                SetAnimationMove("attackBack");
             }
             else if (side == "down")
             {
-                enemiesToDamage = Physics2D.OverlapCircleAll(bulletDirections[1].position, 0.65f);
+                enemiesToDamage = Physics2D.OverlapCircleAll(bulletDirections[1].position, 2f);
                 SetAnimationMove("attack");
             }
+
             for (int i = 0; i < enemiesToDamage.Length; i++)
             {
+                Debug.Log(enemiesToDamage[i].gameObject.name);
                 if (enemiesToDamage[i].gameObject.tag == "enemy")
                     enemiesToDamage[i].gameObject.GetComponent<enemy>().EditHp(-1 * stats.modifyAttack);
             }
@@ -141,14 +179,26 @@ public class player : MonoBehaviour
         KD_bullet = stats.attackRate;
     }
 
+    void OnDrawGizmosSelected()
+    {
+        Gizmos.color = Color.red;
+        Gizmos.DrawWireSphere(bulletDirections[2].position, 2f);
+        Gizmos.DrawWireSphere(bulletDirections[3].position, 2f);
+        Gizmos.DrawWireSphere(bulletDirections[0].position, 2f);
+        Gizmos.DrawWireSphere(bulletDirections[1].position, 2f);
+    }
+
     private void SetAnimationMove(string boolActivate)
     {
         GetComponent<Animator>().SetBool("walkBack", false);
         GetComponent<Animator>().SetBool("walk", false);
         GetComponent<Animator>().SetBool("walkRightOrLeft", false);
         GetComponent<Animator>().SetBool(boolActivate, true);
-        if (boolActivate == "" && boolActivate != "attack" || boolActivate == "" && boolActivate != "attackRight")
-            GetComponent<Animator>().Play("idle");
+        if (weaponPlayer != weaponType.gun)
+        {
+            if (boolActivate == "" && boolActivate != "attack" || boolActivate == "" && boolActivate != "attackRight" || boolActivate == "" && boolActivate != "attackBack")
+                GetComponent<Animator>().Play("idle");            
+        }
     }
 
     private void Update()
@@ -165,7 +215,7 @@ public class player : MonoBehaviour
                 stats.stamina -= 0.1f;
             else if (!run && stats.stamina < superStats.endurance * 100)
                 stats.stamina += 0.06f;
-
+            staminaSlider.value = stats.stamina;
             // Ходьба
             if (Input.GetKey(KeyCode.W))
             {
@@ -230,6 +280,7 @@ public class player : MonoBehaviour
             block = false;
         GetComponent<Animator>().SetBool("attack", false);
         GetComponent<Animator>().SetBool("attackRight", false);
+        GetComponent<Animator>().SetBool("attackBack", false);
     }
 }
 

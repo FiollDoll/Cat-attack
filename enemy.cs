@@ -14,10 +14,11 @@ public class enemy : MonoBehaviour
     [SerializeField] private float runHp;
 
     [Header("Other")]
+    private bool block;
     [SerializeField] private GameObject bulletPrefab;
     private enum weaponType { gun, melee };
     [SerializeField] private weaponType weapon;
-
+    public GameObject end;
     private bool runFromPlayer;
     private float KD_bullet;
 
@@ -25,11 +26,7 @@ public class enemy : MonoBehaviour
     {
         stats.hp += hpEdit;
         if (stats.hp <= 0)
-        {
-            totalRoom.DeleteOneEnemy();
-            Destroy(gameObject);
-            return;
-        }
+            StartCoroutine(Deading());
         else
         {
             if (stats.hp <= runHp)
@@ -54,9 +51,9 @@ public class enemy : MonoBehaviour
         {
             Vector2 moveDirection = player.position - transform.position;
             moveDirection.Normalize();
+            if (!block)
+                transform.Translate(moveDirection * stats.speed * Time.deltaTime);
 
-            float rotZ = Mathf.Atan2(moveDirection.y, moveDirection.x) * Mathf.Rad2Deg;
-            transform.Find("gun").transform.rotation = Quaternion.Euler(0, 0, rotZ);
             if (player.position.x > transform.position.x)
                 transform.localScale = new Vector3(-1, 1, 1);
             else
@@ -66,15 +63,23 @@ public class enemy : MonoBehaviour
             {
                 if (weapon == weaponType.gun)
                 {
+                    block = true;
                     var obj = Instantiate(bulletPrefab, transform.Find("gun").position, Quaternion.identity);
                     obj.GetComponent<bullet>().lifeTime = stats.bulletLifeTime;
                     obj.GetComponent<bullet>().targetPlayer = true;
                     KD_bullet = stats.fireRate;
                     obj.GetComponent<Rigidbody2D>().velocity = new Vector3(moveDirection.x * 5, moveDirection.y * 5, 0);
+                    block = false;
+                    GetComponent<Animator>().Play("enemyAttack");
                 }
                 else
                 {
-                    Collider2D[] enemiesToDamage = Physics2D.OverlapCircleAll(transform.position, 1f);
+                    block = true;
+                    Collider2D[] enemiesToDamage = new Collider2D[0];
+                    if (gameObject.name != "boss")
+                        enemiesToDamage = Physics2D.OverlapCircleAll(transform.position, 1.2f);
+                    else
+                        enemiesToDamage = Physics2D.OverlapCircleAll(transform.position, 2f);
                     for (int i = 0; i < enemiesToDamage.Length; i++)
                     {
                         if (enemiesToDamage[i].gameObject.name == "player")
@@ -83,13 +88,24 @@ public class enemy : MonoBehaviour
                             GetComponent<Animator>().Play("attackRat");
                         }
                     }
-                    KD_bullet = stats.fireRate;
+                    KD_bullet = stats.attackRate;
+                    block = false;
                 }
             }
             else
+            {
                 KD_bullet -= Time.deltaTime;
-
-            transform.Translate(moveDirection * stats.speed * Time.deltaTime);
+            }
         }
+    }
+
+    private IEnumerator Deading()
+    {            
+        if (gameObject.name == "boss")
+            end.gameObject.SetActive(true);
+        totalRoom.DeleteOneEnemy();
+        GetComponent<Animator>().Play("dead");
+        yield return new WaitForSeconds(1);
+        Destroy(gameObject);
     }
 }
